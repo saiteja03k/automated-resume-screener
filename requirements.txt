@@ -1,0 +1,10 @@
+streamlit
+google-generativeai
+langchain-google-genai
+langchain
+pypdf
+python-docx
+spacy
+scikit-learn
+chromadb
+pandas

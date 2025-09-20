@@ -1,16 +1,15 @@
 import streamlit as st
-import pandas as pd
 import os
 
 # Import your custom modules
 from core.parser import extract_text_from_file
 from core.matcher import perform_hard_match
 from core.scoring import get_embedding, perform_semantic_match, calculate_final_score, get_verdict, generate_feedback
-from utils.db_utils import create_table, save_evaluation, get_all_evaluations
+from utils.db_utils import create_table, save_evaluation
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Automated Resume Relevance Checker",
+    page_title="Resume Submission Portal",
     page_icon="📄",
     layout="wide"
 )
@@ -19,104 +18,74 @@ st.set_page_config(
 
 # Check for API Key
 if "GEMINI_API_KEY" not in os.environ:
-    st.error("🚨 Gemini API Key not found! Please set it as an environment variable.")
+    st.error("🚨 Gemini API Key not found! Please ensure it is configured in the Streamlit secrets.")
     st.stop()
 
 # Initialize the database and table
 create_table()
 
 # --- UI Layout ---
-st.title("🤖 Automated Resume Relevance Check System")
-st.markdown("An AI-powered tool to score and rank resumes against job descriptions at scale. [cite: 1, 7]")
+st.title("👨‍🎓 Student Resume Submission Portal")
+st.markdown("Select a Job Description and upload your resume to get an instant relevance score and feedback.")
 
-st.sidebar.header("Controls")
+# --- Job Description and Resume Input ---
+col1, col2 = st.columns(2)
 
-# --- Job Description Input ---
-st.sidebar.subheader("1. Job Description")
-jd_text = st.sidebar.text_area("Paste the Job Description here", height=200)
+with col1:
+    st.subheader("1. Job Description")
+    jd_text = st.text_area("Paste the Job Description here", height=300)
 
-# --- Resume Files Upload ---
-st.sidebar.subheader("2. Upload Resumes")
-uploaded_files = st.sidebar.file_uploader(
-    "Choose resume files (PDF or DOCX)", 
-    type=['pdf', 'docx'], 
-    accept_multiple_files=True
-)
+with col2:
+    st.subheader("2. Upload Your Resume")
+    uploaded_file = st.file_uploader(
+        "Choose a resume file (PDF or DOCX)", 
+        type=['pdf', 'docx'], 
+        accept_multiple_files=False # Students submit one resume at a time
+    )
 
-# --- Analysis Trigger ---
-analyze_button = st.sidebar.button("Analyze Resumes", use_container_width=True)
+analyze_button = st.button("Analyze My Resume", use_container_width=True, type="primary")
 
-
-# --- Results Display Area ---
-st.header("Evaluation Results")
-
+# --- Analysis and Results ---
 if analyze_button:
     if not jd_text:
         st.warning("Please paste a Job Description.")
-    elif not uploaded_files:
-        st.warning("Please upload at least one resume.")
+    elif not uploaded_file:
+        st.warning("Please upload your resume.")
     else:
-        with st.spinner("Analyzing resumes... This may take a moment. 🧠"):
-            # 1. Process Job Description
+        with st.spinner("Analyzing your resume... This may take a moment. 🧠"):
+            # Process Job Description
             jd_embedding = get_embedding(jd_text)
             
             if jd_embedding is None:
-                st.error("Could not process the Job Description. The JD might be too short or there was an API error.")
+                st.error("Could not process the Job Description. It might be too short or an API error occurred.")
                 st.stop()
 
-            # 2. Process Each Resume
-            for resume_file in uploaded_files:
-                st.markdown(f"---")
-                st.subheader(f"Processing: `{resume_file.name}`")
-                
-                # Extract text
-                resume_text = extract_text_from_file(resume_file)
-                if "Error reading" in resume_text:
-                    st.error(f"Could not read {resume_file.name}. Error: {resume_text}")
-                    continue
+            # Process Resume
+            st.markdown(f"---")
+            st.subheader(f"Analysis for: `{uploaded_file.name}`")
+            
+            resume_text = extract_text_from_file(uploaded_file)
+            
+            hard_match_score, found, missing = perform_hard_match(jd_text, resume_text)
+            resume_embedding = get_embedding(resume_text)
+            semantic_score = perform_semantic_match(jd_embedding, resume_embedding)
+            final_score = calculate_final_score(hard_match_score, semantic_score)
+            verdict = get_verdict(final_score)
+            feedback = generate_feedback(jd_text, resume_text, missing)
 
-                # Perform Hard Match
-                hard_match_score, found, missing = perform_hard_match(jd_text, resume_text)
-                
-                # Perform Semantic Match
-                resume_embedding = get_embedding(resume_text)
-                semantic_score = perform_semantic_match(jd_embedding, resume_embedding)
-                
-                # Calculate Final Score and Verdict
-                final_score = calculate_final_score(hard_match_score, semantic_score)
-                verdict = get_verdict(final_score)
-                
-                # Generate AI Feedback
-                feedback = generate_feedback(jd_text, resume_text, missing)
+            # Save to Database
+            job_title_placeholder = " ".join(jd_text.split()[:5]) + "..."
+            save_evaluation(job_title_placeholder, uploaded_file.name, final_score, verdict, missing, feedback)
 
-                # Save to Database
-                job_title_placeholder = " ".join(jd_text.split()[:5]) + "..." # Use first few words as a title
-                save_evaluation(job_title_placeholder, resume_file.name, final_score, verdict, missing, feedback)
+            # Display Results
+            st.success("Analysis Complete!")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Relevance Score", f"{final_score}%", delta=verdict)
+            col2.metric("Keyword Match", f"{int(hard_match_score)}%")
+            col3.metric("Semantic Match", f"{int(semantic_score)}%")
 
-                # Display Individual Result
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Relevance Score", f"{final_score}%", delta=verdict)
-                col2.metric("Keyword Match", f"{int(hard_match_score)}%")
-                col3.metric("Semantic Match", f"{int(semantic_score)}%")
-
-                with st.expander("Show Details & AI Feedback"):
-                    st.markdown("##### AI-Generated Feedback for Improvement")
-                    st.info(feedback)
-                    st.markdown("##### Missing Keywords")
-                    st.warning(", ".join(missing) if missing else "None")
-
-
-# --- Dashboard View ---
-st.markdown("---")
-st.header("Results Dashboard")
-st.markdown("All past evaluations are stored here. Click on a column to sort.")
-
-all_results_df = get_all_evaluations()
-
-if not all_results_df.empty:
-    # Improve display
-    all_results_df['evaluation_date'] = pd.to_datetime(all_results_df['evaluation_date']).dt.strftime('%Y-%m-%d %H:%M')
-    all_results_df = all_results_df.sort_values(by="relevance_score", ascending=False)
-    st.dataframe(all_results_df, use_container_width=True)
-else:
-    st.info("No evaluations have been run yet. Use the controls in the sidebar to start.")
+            with st.expander("Show AI Feedback and Missing Keywords"):
+                st.markdown("##### AI-Generated Feedback for Improvement")
+                st.info(feedback)
+                st.markdown("##### Missing Keywords")
+                st.warning(", ".join(missing) if missing else "None")

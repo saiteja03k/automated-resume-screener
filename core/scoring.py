@@ -46,17 +46,18 @@ def calculate_final_score(hard_match_score, semantic_match_score):
     """
     Calculates the final weighted score.
     """
-    # NEW Weights: 60% for hard match, 40% for semantic match
-    final_score = (0.6 * hard_match_score) + (0.4 * semantic_match_score)
+    # FINAL Weights: 50% for hard match, 50% for semantic match
+    final_score = (0.5 * hard_match_score) + (0.5 * semantic_match_score)
     return int(final_score)
 
 def get_verdict(score):
     """
     Determines the verdict based on the final score.
     """
-    if score >= 70: # Lowered the bar for a "High" verdict
+    # FINAL Thresholds: Stricter and more balanced ranges
+    if score >= 75:
         return "High"
-    elif 50 <= score < 70: # Adjusted the "Medium" range
+    elif 55 <= score < 75:
         return "Medium"
     else:
         return "Low"

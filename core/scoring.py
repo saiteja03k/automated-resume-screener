@@ -52,11 +52,11 @@ def calculate_final_score(hard_match_score, semantic_match_score):
 
 def get_verdict(score):
     """
-    [cite_start]Determines the verdict based on the final score. [cite: 112]
+    Determines the verdict based on the final score.
     """
-    if score >= 75:
+    if score >= 70: # Lowered the bar for a "High" verdict
         return "High"
-    elif 50 <= score < 75:
+    elif 50 <= score < 70: # Adjusted the "Medium" range
         return "Medium"
     else:
         return "Low"

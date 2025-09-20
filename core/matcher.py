@@ -2,14 +2,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import spacy
 import re
 
-# Load the spaCy model once
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    print("Downloading 'en_core_web_sm' model...")
-    from spacy.cli import download
-    download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# Load the spaCy model, which is pre-installed via requirements.txt
+nlp = spacy.load("en_core_web_sm")
 
 def preprocess_text(text):
     """

@@ -6,7 +6,7 @@
 
 ## 🚀 Live Demo & Presentation
 
-* **Live Application URL:** []
+* **Live Application URL:** [https://automated-resume-screener-enuizeegpwsbizh4yuvoyu.streamlit.app/]
 * **Video Walkthrough URL:** [**<< PASTE YOUR YOUTUBE VIDEO URL HERE >>**]
 
 ---

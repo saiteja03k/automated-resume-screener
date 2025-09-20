@@ -46,13 +46,13 @@ def calculate_final_score(hard_match_score, semantic_match_score):
     """
     Calculates the final weighted score.
     """
-    # Weights: 40% for hard match, 60% for semantic match
-    final_score = (0.4 * hard_match_score) + (0.6 * semantic_match_score)
+    # NEW Weights: 60% for hard match, 40% for semantic match
+    final_score = (0.6 * hard_match_score) + (0.4 * semantic_match_score)
     return int(final_score)
 
 def get_verdict(score):
     """
-    Determines the verdict based on the final score. [cite: 10]
+    [cite_start]Determines the verdict based on the final score. [cite: 112]
     """
     if score >= 75:
         return "High"
@@ -63,7 +63,7 @@ def get_verdict(score):
 
 def generate_feedback(jd_text, resume_text, missing_skills):
     """
-    Generates personalized feedback using Gemini Pro.
+    [cite_start]Generates personalized feedback using Gemini Pro. [cite: 113]
     """
     model = genai.GenerativeModel('gemini-1.5-pro-latest')
     
